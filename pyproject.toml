@@ -1,12 +1,16 @@
 [build-system]
-requires = ["hatchling"]
+requires = [
+  "hatchling",
+  "sklearn"
+  ]
 build-backend = "hatchling.build"
 
+
 [project]
-name = "example_package_lvyaqiao"
-version = "0.0.1"
+name = "geodetector"
+version = "0.0.2"
 authors = [
-  { name="Example Author", email="author@example.com" },
+  { name="lvyaqiao", email="lvyaqiao@126.com" },
 ]
 description = "A small example package"
 readme = "README.md"
@@ -18,5 +22,5 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/pypa/sampleproject"
-"Bug Tracker" = "https://github.com/pypa/sampleproject/issues"
+"Homepage" = "https://github.com/lvyaqiao/geodetector"
+"Bug Tracker" = "https://github.com/lvyaqiao/geodetector/issues"
