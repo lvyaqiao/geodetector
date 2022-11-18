@@ -1,9 +1,8 @@
 import numpy as np
 import numpy.typing as npt
-from gplearn.genetic import SymbolicRegressor
 
 
-def group_by(X: npt.NDArray[np.int_], y: npt.NDArray[np.float_]):
+def groupby(X: npt.NDArray[np.int_], y: npt.NDArray[np.float_]):
     """group y by x
 
     Parameters

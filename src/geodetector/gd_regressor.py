@@ -1,11 +1,10 @@
 import numpy as np
-import numpy.typing as npt
-import pandas as pd
-from sklearn.base import BaseEstimator, ClusterMixin, RegressorMixin
+from sklearn.base import BaseEstimator,RegressorMixin
 from sklearn.cluster import KMeans
 from sklearn.utils.random import check_random_state
 from sklearn.utils.validation import check_is_fitted
-from .utils import group_by
+
+from .utils import groupby
 
 
 class GeoDetectorRegressor(RegressorMixin, BaseEstimator):
@@ -84,7 +83,7 @@ class GeoDetectorRegressor(RegressorMixin, BaseEstimator):
 
         # group y by x
         # group_val is a dict, key is the layer ,and value is the array of y
-        group_val = group_by(X, y)
+        group_val = groupby(X, y)
         judge_dic = {key: val.mean() for key, val in group_val.items()}
         self.judge_dic = judge_dic  # map group to layer_mean
 
@@ -107,9 +106,7 @@ class GeoDetectorRegressor(RegressorMixin, BaseEstimator):
         if self.method is not None:
             X = self._cluster(X, self.method)
         else:
-            assert issubclass(
-                X.dtype.type,  #type: ignore
-                np.integer), "dtype of X must be int."  # type: ignore
+            X = X.astype(np.int_)
 
         y = np.array([self.judge_dic[tuple(x)] for x in X])
         return y
@@ -132,12 +129,16 @@ class GeoDetectorRegressor(RegressorMixin, BaseEstimator):
         shape = X.shape
         clustered_X = np.zeros(shape)
         for i in range(shape[1]):
-            clustered_X[:, i] = method.fit_predict(X[:, i])
+            clustered_X[:, [i]] = method.fit_predict(X[:, [i]]).reshape(-1, 1)
         return clustered_X
 
     def _get_method(self, method):
         method = method.lower()
         if method == "kmeans" or method == "nb":
             return KMeans(random_state=self.random_state, n_clusters=5)
+        elif method.startswith("kmeans") or method.startswith("nb"):
+            n_clusters = int(method.split("_")[1])
+            return KMeans(random_state=self.random_state,
+                          n_clusters=n_clusters)
         else:
             raise ValueError(f"method {method} is not supported.")

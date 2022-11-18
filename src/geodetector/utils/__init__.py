@@ -1,1 +1,1 @@
-from ._groupby import group_by
+from ._groupby import groupby

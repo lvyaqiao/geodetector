@@ -1,18 +1,20 @@
 [build-system]
 requires = [
-  "hatchling",
-  "sklearn"
-  ]
+    "hatchling",
+    "numpy",
+    "sklearn",
+    "seaborn"
+]
 build-backend = "hatchling.build"
 
 
 [project]
 name = "geodetector"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
-  { name="lvyaqiao", email="lvyaqiao@126.com" },
+    { name = "lvyaqiao", email = "lvyaqiao@126.com" },
 ]
-description = "A small example package"
+description = "a tool for detect the relationship between variables"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
