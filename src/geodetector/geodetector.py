@@ -1,219 +1,292 @@
-from collections import OrderedDict
-from itertools import combinations
-from typing import List
+"""GeoDetector — master orchestrator for all four detectors.
+
+Provides a single-entry API that fits all detectors at once and stores
+results as attributes, matching the R GD / gdverse workflow.
+"""
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import r2_score
+from typing import List, Optional
 
-from .gd_regressor import GeoDetectorRegressor
+from ._base import BaseEstimator
+from .utils import validate_data
+from .detectors import (
+    FactorDetector,
+    InteractionDetector,
+    RiskDetector,
+    EcologicalDetector,
+)
 
 
-class GeoDetector:
-    """ GeoDetector proveid an easy to use interface to calculate the q values
-    of the covariates.
-    
-    References
+class GeoDetector(BaseEstimator):
+    """Master class for geographical detector analysis.
+
+    Parameters
     ----------
-    .. [1] Wang JF, Li XH, Christakos G, Liao YL, Zhang T, Gu X & Zheng XY. 2010.
-    Geographical detectors-based health risk assessment and its application in 
-    the neural tube defects study of the Heshun region, China. International 
-    Journal of Geographical Information Science 24(1): 107-127.
-    
-    .. [2] Wang JF, Zhang TL, Fu BJ. 2016.A measure of spatial stratified 
-    heterogeneity. Ecological Indicators 67(2016): 250-256. 
+    factors : list of str, optional
+        Column names of explanatory variables. If None, all columns
+        except ``target`` are used.
+    target : str, optional
+        Column name of the response variable. If None, the first
+        column is used.
+    discretize : str, default="quantile"
+        Discretization method for continuous factors.
+    n_strata : int, default=5
+        Number of strata for discretization.
+    alpha : float, default=0.05
+        Significance level for statistical tests.
+    random_state : int, default=42
+        Random seed.
+
+    Attributes (after fit)
+    ----------------------
+    q_values_ : pd.DataFrame
+        Factor detector: columns ``variable``, ``q_value``,
+        ``p_value``, ``significant``.
+    interaction_q_ : pd.DataFrame
+        Interaction q-value matrix.
+    interaction_type_ : pd.DataFrame
+        Interaction type matrix (0-4).
+    risk_result_ : dict
+        Risk detector results per factor.
+    ecological_result_ : pd.DataFrame
+        Ecological detector: columns ``factor_1``, ``factor_2``,
+        ``f_stat``, ``p_value``, ``significant``.
+
+    Examples
+    --------
+    >>> from geodetector import GeoDetector
+    >>> from geodetector.dataset import load_disease
+    >>> df = load_disease()
+    >>> gd = GeoDetector(factors=["type", "region", "level"], target="incidence")
+    >>> gd.fit(df)
+    >>> gd.q_values_
+    >>> gd.plot()
     """
 
     def __init__(self,
-                 data: pd.DataFrame,
-                 x_names: List[str] = "1:",
-                 y_name: str = "0",
+                 factors: Optional[List[str]] = None,
+                 target: Optional[str] = None,
                  *,
-                 method=None,
-                 random_state=42):
-        self.gd_regressor = GeoDetectorRegressor(method=method,
-                                                 random_state=random_state)
-        self.x_names = x_names
-        self.y_name = y_name
-        self.data = data
+                 discretize_method: str = "quantile",
+                 n_strata: int = 5,
+                 alpha: float = 0.05,
+                 random_state: int = 42):
+        self.factors = factors
+        self.target = target
+        self.discretize_method = discretize_method
+        self.n_strata = n_strata
+        self.alpha = alpha
+        self.random_state = random_state
 
-        if x_names == "1:":
-            self.x_names = list(data.columns)[1:]
+    def fit(self, data: pd.DataFrame):
+        """Fit all detectors.
 
-        if y_name == "0":
-            self.y_name = list(data.columns)[0]
-
-        self._check_valid_data(data, self.x_names,
-                               self.y_name)  #  type: ignore
-
-    def q_values(self):
-        """_q_values calculate the q values of the covariates
-
-        Returns
-        -------
-        dict, the key is the covariate name, and the value is the q value
-        """
-        # key is the name of x, value is the q value of x
-        dic = OrderedDict()
-        for x_name in self.x_names:
-            self.gd_regressor.fit(self.data[[x_name]], self.data[self.y_name])
-            y_true = self.data[self.y_name]
-            # the mean of y in each group is the prediction of y
-            y_pred = self.gd_regressor.predict(self.data[[x_name]])
-            # 1 - SSW/SST = 1 - MSE/VAR = R2
-            q = r2_score(y_true, y_pred)
-            dic[x_name] = q
-        return dic
-
-    def inter_q_values(self):
-        """ factor_detect detect the interaction between covariates
-        
-        Returns
-        -------
-        dict, the key is the tuple covariate name, and the value is the q value
-        
-        Examples
-        --------
-        
-        """
-        dic = OrderedDict()
-        for x1, x2 in combinations(self.x_names, 2):
-            self.gd_regressor.fit(self.data[[x1, x2]], self.data[self.y_name])
-            y_true = self.data[self.y_name]
-            # the mean of y in each group is the prediction of y
-            y_pred = self.gd_regressor.predict(self.data[[x1, x2]])
-            # 1 - SSW/SST = 1 - MSE/VAR = R2
-            q = r2_score(y_true, y_pred)
-            dic[(x1, x2)] = q
-        return dic
-
-    def interaction_detect(self, interaction_type=False):
-        """ factor_detect detect the interaction between covariates
         Parameters
         ----------
-        return_union: bool, default False
-        whether return the union of the covariates
+        data : pd.DataFrame
+            Must contain all ``factors`` columns and the ``target`` column.
 
         Returns
         -------
-        a dataframe, the index and columns are the covariate names, and the 
-        value is the q value
+        self
         """
-        df = pd.DataFrame(index=self.x_names,
-                          columns=self.x_names,
-                          dtype=np.float_)
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError("data must be a pandas DataFrame")
 
-        q_dic = self.q_values()
-        for x_name in self.x_names:
-            df.loc[x_name, x_name] = q_dic[x_name]
+        # Resolve factors and target
+        if self.factors is None:
+            if self.target is None:
+                self.target = data.columns[0]
+            self.factors = [c for c in data.columns if c != self.target]
+        if self.target is None:
+            self.target = data.columns[0]
+            self.factors = [c for c in self.factors if c != self.target]
 
-        inter_q_dic = self.inter_q_values()
-        for cols, q in inter_q_dic.items():
-            df.loc[cols[0], cols[1]] = q
-            df.loc[cols[1], cols[0]] = q
+        validate_data(data, self.factors, self.target)
 
-        if not interaction_type:
-            return df
-        elif interaction_type:
-            interaction_type = pd.DataFrame(index=self.x_names,
-                                            columns=self.x_names,
-                                            dtype=np.int_)
-            for cols, q in inter_q_dic.items():
-                new_q = df.loc[cols[0], cols[1]]
-                q_0 = q_dic[cols[0]]
-                q_1 = q_dic[cols[1]]
-                if new_q < min(q_0, q_1):
-                    # no linear -
-                    interaction_type.loc[cols[0], cols[1]] = 0
-                elif min(q_0, q_1) < new_q < max(q_0, q_1):
-                    # single_no_linear -
-                    interaction_type.loc[cols[0], cols[1]] = 1
-                elif max(q_0, q_1) < new_q < q_0 + q_1:
-                    # bi+
-                    interaction_type.loc[cols[0], cols[1]] = 2
-                elif new_q == q_0 + q_1:
-                    # alone
-                    interaction_type.loc[cols[0], cols[1]] = 3
-                elif new_q > q_0 + q_1:
-                    # no linear +
-                    interaction_type.loc[cols[0], cols[1]] = 4
-                else:
-                    raise ValueError("new_q is not in the range")
-            return df, interaction_type
+        X = data[self.factors]
+        y = data[self.target]
+
+        # ── Factor Detector ─────────────────────────────────
+        q_rows = []
+        for f in self.factors:
+            fd = FactorDetector(
+                discretize_method=self.discretize_method,
+                n_strata=self.n_strata,
+                random_state=self.random_state,
+            )
+            fd.fit(X[[f]], y)
+            q_rows.append({
+                "variable": f,
+                "q_value": fd.q_value_,
+                "p_value": fd.p_value_,
+                "significant": fd.p_value_ < self.alpha,
+            })
+        self.q_values_ = pd.DataFrame(q_rows)
+
+        # ── Interaction Detector ────────────────────────────
+        if len(self.factors) >= 2:
+            id_ = InteractionDetector(
+                discretize_method=self.discretize_method,
+                n_strata=self.n_strata,
+            )
+            id_.fit(X, y)
+            self.interaction_q_ = id_.interaction_q_
+            self.interaction_type_ = id_.interaction_type_
         else:
-            raise ValueError("interaction_type must be bool")
+            self.interaction_q_ = None
+            self.interaction_type_ = None
 
-    def plot_interaction(self, show=True):
-        interaction_df = self.interaction_detect(interaction_type=False)
-        # plot the heatmap of the interaction
-        # cbar max value is 1
-        ax = sns.heatmap(
-            interaction_df,
-            annot=True,
-            cmap="crest",
-            #  vmax=1,
-            #  vmin=0,
-            linewidths=0.5,
-            linecolor="black")
+        # ── Risk Detector ───────────────────────────────────
+        rd = RiskDetector(
+            alpha=self.alpha,
+            discretize_method=self.discretize_method,
+            n_strata=self.n_strata,
+        )
+        rd.fit(X, y)
+        # RiskDetector always returns dict now
+        self.risk_result_ = rd.risk_result_
 
-        if show:
-            plt.show()
-            return ax
+        # ── Ecological Detector ─────────────────────────────
+        if len(self.factors) >= 2:
+            ed = EcologicalDetector(
+                alpha=self.alpha,
+                discretize_method=self.discretize_method,
+                n_strata=self.n_strata,
+            )
+            ed.fit(X, y)
+            self.ecological_result_ = ed.eco_result_
         else:
-            return ax
+            self.ecological_result_ = None
 
-    def plot(self, show=True):
-        q = self.q_values()
-        lst = [(i, j) for i, j in q.items()]
-        lst.sort(key=lambda x: x[1], reverse=True)
-        key, value = zip(*lst)
-        key = np.array(key)
-        value = np.array(value)
+        return self
 
-        ax = sns.barplot(
-            x=value,
-            y=key,
-            orient="h",
-            palette="crest",
-            width=0.5,
-            edgecolor="black",
+    # ── Plotting (thin wrappers over plotting.py) ───────────
+
+    def plot(self, **kwargs):
+        """Plot q-values as a horizontal bar chart.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+        """
+        from .plotting import plot_factor
+        return plot_factor(self.q_values_, sig_level=self.alpha, **kwargs)
+
+    def plot_interaction(self, style="heatmap", **kwargs):
+        """Plot interaction matrix.
+
+        Parameters
+        ----------
+        style : str, default="heatmap"
+            "heatmap" or "bubble".
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+        """
+        from .plotting import plot_interaction
+        return plot_interaction(
+            self.interaction_q_,
+            self.interaction_type_,
+            style=style,
+            **kwargs,
         )
 
-        # show value in the bar
-        for p in ax.patches:
-            ax.annotate(
-                "%.2f" % p.get_width(),
-                (p.get_width() / 2, p.get_y() + p.get_height() / 2.),
-                ha="left",
-                va="center",
-                xytext=(-30, 0),
-                textcoords="offset points",
+    def plot_risk(self, **kwargs):
+        """Plot risk detector matrices.
+
+        Returns
+        -------
+        dict of matplotlib.axes.Axes or single Axes
+        """
+        from .plotting import plot_risk
+        return plot_risk(self.risk_result_, **kwargs)
+
+    def plot_ecological(self, **kwargs):
+        """Plot ecological detector matrix.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+        """
+        from .plotting import plot_ecological
+        return plot_ecological(self.ecological_result_, **kwargs)
+
+    def plot_dashboard(self, **kwargs):
+        """Plot all four detectors on one figure.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+        """
+        from .plotting import plot_dashboard
+        return plot_dashboard(self, **kwargs)
+
+    # ── Summary ─────────────────────────────────────────────
+
+    def summary(self) -> str:
+        """Return a formatted multi-line summary of all results.
+
+        Returns
+        -------
+        str
+        """
+        lines = []
+        lines.append("=" * 60)
+        lines.append("  GeoDetector Summary")
+        lines.append("=" * 60)
+
+        # Factor detector
+        lines.append("")
+        lines.append("Factor Detector (q-values):")
+        lines.append("-" * 45)
+        col_w = max(len(v) for v in self.factors) if self.factors else 10
+        for _, row in self.q_values_.iterrows():
+            sig_mark = ""
+            if row["p_value"] < 0.001:
+                sig_mark = "  ***"
+            elif row["p_value"] < 0.01:
+                sig_mark = "  **"
+            elif row["p_value"] < 0.05:
+                sig_mark = "  *"
+            lines.append(
+                f"  {row['variable']:<{col_w}s}  "
+                f"q = {row['q_value']:.4f}  "
+                f"p = {row['p_value']:.4f}{sig_mark}"
             )
 
-        if show:
-            plt.show()
-            return ax
-        else:
-            return ax
-        
-    def f_value(self):
-        dic = OrderedDict()
-        for x_name in self.x_names:
-            self.gd_regressor.fit(self.data[[x_name]], self.data[self.y_name])
-            y_true = self.data[self.y_name]
-            # the mean of y in each group is the prediction of y
-            y_pred = self.gd_regressor.predict(self.data[[x_name]])
-            # 1 - SSW/SST = 1 - MSE/VAR = R2
-            q = r2_score(y_true, y_pred)
-            dic[x_name] = q
-        return dic
-        
+        # Interaction detector
+        if self.interaction_q_ is not None:
+            lines.append("")
+            lines.append("Interaction Detector (q-values matrix):")
+            lines.append("-" * 45)
+            lines.append(self.interaction_q_.round(4).to_string())
 
-    def _check_valid_data(self, data: pd.DataFrame, x_names: List[str],
-                          y_names: str):
-        for x_name in x_names:
-            assert x_name in data.columns, f"{x_name} is not in data."
+        # Risk detector (summary by factor)
+        lines.append("")
+        lines.append("Risk Detector (significant stratum pairs):")
+        lines.append("-" * 45)
+        for factor, df in self.risk_result_.items():
+            if df is not None and not df.empty:
+                sig_pairs = df[df["significant"]]
+                lines.append(
+                    f"  {factor}: {len(sig_pairs)}/{len(df)} "
+                    f"pairs significantly different"
+                )
 
-        assert y_names in data.columns, f"{y_names} is not in data."
+        # Ecological detector
+        if self.ecological_result_ is not None:
+            lines.append("")
+            lines.append("Ecological Detector (pairwise F-test):")
+            lines.append("-" * 45)
+            for _, row in self.ecological_result_.iterrows():
+                sig = " *" if row["significant"] else ""
+                lines.append(
+                    f"  {row['factor_1']} vs {row['factor_2']}: "
+                    f"F = {row['f_stat']:.3f}, p = {row['p_value']:.4f}{sig}"
+                )
+
+        lines.append("")
+        return "\n".join(lines)

@@ -1,28 +1,52 @@
 [build-system]
-requires = [
-    "hatchling",
-    "numpy",
-    "sklearn",
-    "seaborn"
-]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
-
 
 [project]
 name = "geodetector"
-version = "0.0.3"
+version = "0.1.0"
 authors = [
     { name = "lvyaqiao", email = "lvyaqiao@126.com" },
 ]
-description = "a tool for detect the relationship between variables"
+description = "A toolkit for detecting spatial stratified heterogeneity"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
+license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+dependencies = [
+    "numpy>=1.20",
+    "pandas>=1.3",
+    "scipy>=1.7",
+    "matplotlib>=3.4",
+    "seaborn>=0.11",
+    "mapclassify>=2.4",
 ]
 
+[project.optional-dependencies]
+parallel = ["joblib>=1.0"]
+sklearn = ["scikit-learn>=1.0"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff"]
+
 [project.urls]
-"Homepage" = "https://github.com/lvyaqiao/geodetector"
+Homepage = "https://github.com/lvyaqiao/geodetector"
 "Bug Tracker" = "https://github.com/lvyaqiao/geodetector/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/geodetector"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
