@@ -4,15 +4,17 @@ Each detector follows sklearn conventions (fit / predict / score) where
 applicable, and stores results as trailing-underscore attributes.
 """
 
+from itertools import combinations
+
 import numpy as np
 import pandas as pd
-from itertools import combinations
-from scipy.stats import ttest_ind, f as _f_dist
+from scipy.stats import f as _f_dist
+from scipy.stats import ttest_ind
 
 from ._base import BaseEstimator, RegressorMixin
-from ._stats import q_statistic, q_significance_test, interaction_type, compute_sst
-from .discretize import discretize, should_discretize
+from ._stats import interaction_type, q_significance_test, q_statistic
 from ._types import INTERACTION_TYPES
+from .discretize import discretize, should_discretize
 
 
 def _prepare_x(x_col, *, discretize_method="quantile", n_strata=5):

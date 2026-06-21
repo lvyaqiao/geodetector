@@ -1,9 +1,9 @@
 """Utility functions for geodetector."""
 
-from ._groupby import groupby
-
 import numpy as np
 import pandas as pd
+
+from ._groupby import groupby
 
 
 def all2int(x):

@@ -20,16 +20,16 @@ Extensions
 - ``LESH`` — locally explained stratified heterogeneity (Shapley)
 """
 
+from . import dataset, extensions
+from ._stats import q_statistic
 from .detectors import (
+    EcologicalDetector,
     FactorDetector,
     InteractionDetector,
     RiskDetector,
-    EcologicalDetector,
 )
+from .discretize import Discretizer, OptimalDiscretizer, discretize, should_discretize
 from .geodetector import GeoDetector
-from .discretize import discretize, Discretizer, OptimalDiscretizer, should_discretize
-from ._stats import q_statistic
-from . import dataset, extensions
 
 __all__ = [
     # Main orchestrator

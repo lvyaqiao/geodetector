@@ -7,8 +7,8 @@ If scikit-learn is installed, the classes below are replaced by
 their sklearn counterparts in __init__.py.
 """
 
-import copy
 import inspect
+
 import numpy as np
 
 

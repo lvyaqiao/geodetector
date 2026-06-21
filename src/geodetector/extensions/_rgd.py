@@ -16,8 +16,8 @@ Int. J. Appl. Earth Obs. Geoinf. 109, 102782.
 import numpy as np
 import pandas as pd
 
-from ..geodetector import GeoDetector
 from .._stats import q_statistic
+from ..geodetector import GeoDetector
 
 
 def robust_discretize(x, k, *, y=None, minsize=1, random_state=42):
@@ -222,8 +222,6 @@ class RGD:
         # Determine which factors need discretization
         continuous_factors = [f for f in self.factors
                               if should_discretize(data[f])]
-        categorical_factors = [f for f in self.factors
-                               if f not in continuous_factors]
 
         if len(discnums) <= 1 or len(continuous_factors) == 0:
             # Single-k mode (backward compatible)
@@ -247,7 +245,6 @@ class RGD:
             return self
 
         # Multi-k mode: search over discnums
-        from .._stats import q_statistic
 
         all_rows = []
         all_discretized = {}  # discnum -> discretized DataFrame

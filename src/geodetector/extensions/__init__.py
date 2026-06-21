@@ -9,10 +9,10 @@ Modules
 - ``_rgd`` : Robust Geographical Detector (RGD)
 """
 
+from ._geometric import discretize_geometric, geometric_breaks
+from ._gozh import GOZH, rpart_discretize
 from ._lesh import LESH, shapley_decompose
 from ._opgd import OPGD
-from ._gozh import GOZH, rpart_discretize
-from ._geometric import geometric_breaks, discretize_geometric
 from ._rgd import RGD, robust_discretize
 
 __all__ = [

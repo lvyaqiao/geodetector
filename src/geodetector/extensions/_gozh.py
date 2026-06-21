@@ -174,7 +174,7 @@ class GOZH:
             self.interaction_pairs_ = []
             return
 
-        from .._stats import q_statistic, interaction_type
+        from .._stats import interaction_type, q_statistic
         from .._types import INTERACTION_TYPES
 
         factors_list = list(self.factors)

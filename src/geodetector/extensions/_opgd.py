@@ -16,12 +16,10 @@ import numpy as np
 import pandas as pd
 
 from ..discretize import (
+    OptimalDiscretizer,
     discretize,
     should_discretize,
-    OptimalDiscretizer,
-    _METHOD_MAP,
 )
-from .._stats import q_statistic
 from ..utils import all2int
 
 

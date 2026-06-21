@@ -8,11 +8,10 @@ discretization.
 import numpy as np
 import pandas as pd
 from mapclassify import (
-    Quantiles,
     EqualInterval,
     FisherJenks,
-    NaturalBreaks,
     MaximumBreaks,
+    Quantiles,
     StdMean,
 )
 
@@ -118,9 +117,9 @@ def should_discretize(x, max_levels=None):
         dtype = x.dtype
         if isinstance(dtype, pd.CategoricalDtype):
             return False
-        if dtype == object or dtype == "string":
+        if dtype == np.dtype(object) or dtype == "string":
             return False
-        if dtype == bool:
+        if dtype == np.dtype(bool):
             return False
         if dtype.kind in ("O", "U", "S"):
             return False

@@ -4,13 +4,12 @@ Style follows the gdverse R package (ggplot2 aesthetics) where possible.
 All functions are pure: they accept data and return matplotlib Axes.
 """
 
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 from matplotlib.colors import ListedColormap
-from itertools import combinations
-import warnings
+from matplotlib.patches import Patch
 
 # ── Global colour palette (matching GD / gdverse) ─────────────
 
@@ -77,8 +76,8 @@ def plot_factor(q_values, *, ax=None, sig_level=0.05, slicenum=2,
     # Colours: first (highest q) red, others gray — gdverse convention
     colors = [PRIMARY_COLOR if i == n - 1 else SECONDARY_COLOR for i in range(n)]
 
-    bars = ax.barh(range(n), df["q_value"], color=colors,
-                   edgecolor="white", height=0.6, linewidth=0.5)
+    ax.barh(range(n), df["q_value"], color=colors,
+            edgecolor="white", height=0.6, linewidth=0.5)
 
     ax.set_yticks(range(n))
     ax.set_yticklabels(df["variable"], fontfamily="serif")
@@ -237,7 +236,9 @@ def plot_risk(risk_result, *, factor=None, ax=None, figsize=None,
         return _plot_risk_one(risk_result, ax=ax, show_labels=show_labels, **kwargs)
 
     if factor is not None:
-        return _plot_risk_one(risk_result[factor], ax=ax, show_labels=show_labels, title=factor, **kwargs)
+        return _plot_risk_one(
+            risk_result[factor], ax=ax,
+            show_labels=show_labels, title=factor, **kwargs)
 
     factors = list(risk_result.keys())
     valid = [f for f in factors
@@ -351,7 +352,7 @@ def plot_ecological(eco_result, *, ax=None, figsize=None,
                             fontsize=10, fontweight="bold", color="black")
     ax.set_xticks(range(n))
     ax.set_yticks(range(n))
-    ax.set_xticklabels(factors);
+    ax.set_xticklabels(factors)
     ax.set_yticklabels(factors)
     ax.set_title("Ecological Detector", fontfamily="serif")
     return ax
@@ -419,12 +420,11 @@ def plot_lesh(lesh, *, ax=None, figsize=None,
         # Draw pie wedge for factor 1 (color #75c7af — gdverse green)
         theta1 = 0
         theta2 = frac1 * 360
-        wedges = ax.add_patch(plt.matplotlib.patches.Wedge(
+        ax.add_patch(plt.matplotlib.patches.Wedge(
             (x, y), r, theta1, theta2,
             facecolor="#75c7af", edgecolor="white", linewidth=0.3, alpha=0.85,
         ))
-        # Draw pie wedge for factor 2 (color #fb9872 — gdverse orange)
-        wedges = ax.add_patch(plt.matplotlib.patches.Wedge(
+        ax.add_patch(plt.matplotlib.patches.Wedge(
             (x, y), r, theta2, 360,
             facecolor="#fb9872", edgecolor="white", linewidth=0.3, alpha=0.85,
         ))
@@ -494,8 +494,8 @@ def plot_optimal_discretization(data, factors, target, *,
     -------
     matplotlib.figure.Figure
     """
-    from .discretize import should_discretize, _METHOD_MAP
     from ._stats import q_statistic
+    from .discretize import _METHOD_MAP, should_discretize
 
     if methods is None:
         methods = ["sd", "equal", "geometric", "quantile", "natural"]
@@ -513,7 +513,6 @@ def plot_optimal_discretization(data, factors, target, *,
     search_data = {}
     best_params = {}
     for f in disc_factors:
-        x_arr = data[f].dropna().values
         valid = ~pd.isna(data[f]) & ~pd.isna(data[target])
         xv = data[f][valid].values
         yv = y_arr[valid]
@@ -546,10 +545,6 @@ def plot_optimal_discretization(data, factors, target, *,
 
     # Plot
     nd = len(disc_factors)
-    ncols = min(2, nd)
-    nrows = nd * 2 // ncols  # two rows per factor (curves + histogram)
-    # Actually, one panel per factor with two sub-subplots
-    # Simpler: one figure with nd rows x 2 cols
     fig, axes = plt.subplots(nd, 2, figsize=figsize or (12, 3 * nd))
     if nd == 1:
         axes = np.array([axes])

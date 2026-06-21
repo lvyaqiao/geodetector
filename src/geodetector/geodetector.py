@@ -4,18 +4,18 @@ Provides a single-entry API that fits all detectors at once and stores
 results as attributes, matching the R GD / gdverse workflow.
 """
 
-import numpy as np
+from typing import Optional
+
 import pandas as pd
-from typing import List, Optional
 
 from ._base import BaseEstimator
-from .utils import validate_data
 from .detectors import (
+    EcologicalDetector,
     FactorDetector,
     InteractionDetector,
     RiskDetector,
-    EcologicalDetector,
 )
+from .utils import validate_data
 
 
 class GeoDetector(BaseEstimator):
@@ -65,7 +65,7 @@ class GeoDetector(BaseEstimator):
     """
 
     def __init__(self,
-                 factors: Optional[List[str]] = None,
+                 factors: Optional[list] = None,
                  target: Optional[str] = None,
                  *,
                  discretize_method: str = "quantile",
