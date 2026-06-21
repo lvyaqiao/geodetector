@@ -194,6 +194,19 @@ This package is aligned with two R reference implementations:
 - Li Y, Luo P, Song Y, et al. 2023. LESH model. *International Journal of Digital Earth* 16(2): 4533-4552.
 - Zhang Z, Song Y, Wu P. 2022. Robust geographical detector. *IJAEOG* 109: 102782.
 - Lv W, Lei Y, et al. 2025. gdverse: An R Package for Spatial Stratified Heterogeneity Family. *Transactions in GIS* 29.
+- Song Y. 2020. GD: Geographical Detectors for Assessing Spatial Factors. R package version 10.10. doi: [10.1080/15481603.2020.1760434](https://doi.org/10.1080/15481603.2020.1760434)
+
+### Reference Implementations
+
+This package was developed with reference to two R implementations:
+
+| Package | Authors | License | Repository |
+|---------|---------|---------|------------|
+| **GD** (v10.10) | Yongze Song, Wenbo Lyu | GPL-3 | [github.com/ausgis/GD](https://github.com/ausgis/GD) |
+| **gdverse** (v1.7) | Wenbo Lyu, Yangyang Lei, Fangmei Liu, Jianwu Yan, Yongze Song, Wufan Zhao | GPL-3 | [github.com/stscl/gdverse](https://github.com/stscl/gdverse) |
+
+We gratefully acknowledge their work — the comparison tables and implementation notes above
+detail where our Python implementation aligns with or intentionally differs from them.
 
 ### License
 
@@ -382,6 +395,18 @@ print(rgd.all_q_values_)  # 所有分层数下的 q 值
 - Li Y, Luo P, Song Y, et al. 2023. LESH 模型. *Int. J. Digital Earth* 16(2): 4533-4552.
 - Zhang Z, Song Y, Wu P. 2022. 鲁棒地理探测器. *IJAEOG* 109: 102782.
 - Lv W, Lei Y, et al. 2025. gdverse: 空间分层异质性家族的 R 包. *Transactions in GIS* 29.
+- Song Y. 2020. GD: Geographical Detectors for Assessing Spatial Factors. R 包 v10.10. doi: [10.1080/15481603.2020.1760434](https://doi.org/10.1080/15481603.2020.1760434)
+
+### 参考实现
+
+本工具包在开发过程中参考了以下两个 R 语言实现：
+
+| 包 | 作者 | 协议 | 仓库 |
+|----|------|------|------|
+| **GD** (v10.10) | Yongze Song, Wenbo Lyu | GPL-3 | [github.com/ausgis/GD](https://github.com/ausgis/GD) |
+| **gdverse** (v1.7) | Wenbo Lyu 等 | GPL-3 | [github.com/stscl/gdverse](https://github.com/stscl/gdverse) |
+
+特此致谢。上文中的对比表和实现说明详细描述了本 Python 实现与它们的一致之处及有意的差异。
 
 ### 许可证
 
