@@ -108,6 +108,9 @@ class GeoDetector(BaseEstimator):
         X = data[self.factors]
         y = data[self.target]
 
+        # Cache for later plotting (e.g., risk_mean, discretization)
+        self._data_cache = data.copy()
+
         # ── Factor Detector ─────────────────────────────────
         q_rows = []
         for f in self.factors:
@@ -223,6 +226,42 @@ class GeoDetector(BaseEstimator):
         """
         from .plotting import plot_dashboard
         return plot_dashboard(self, **kwargs)
+
+    def plot_risk_mean(self, **kwargs):
+        """Plot mean response per stratum for each factor.
+
+        Returns
+        -------
+        dict of matplotlib.axes.Axes or matplotlib.figure.Figure
+        """
+        from .plotting import compute_risk_means, plot_risk_mean
+        X = pd.DataFrame({f: self._data_cache[f] for f in self.factors})
+        y = self._data_cache[self.target]
+        means = compute_risk_means(X, y, discretize_method=self.discretize_method,
+                                   n_strata=self.n_strata)
+        return plot_risk_mean(means, **kwargs)
+
+    def plot_optimal_discretization(self, data=None, **kwargs):
+        """Plot optimal discretization process: q-k curves + histogram.
+
+        Parameters
+        ----------
+        data : pd.DataFrame, optional
+            If None, uses the data passed to ``fit()``.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+        """
+        from .plotting import plot_optimal_discretization
+        if data is None:
+            if not hasattr(self, "_data_cache"):
+                raise ValueError("No data available. Pass data= or call fit() first.")
+            data = self._data_cache
+        return plot_optimal_discretization(
+            data, self.factors, self.target,
+            n_strata=self.n_strata, **kwargs,
+        )
 
     # ── Summary ─────────────────────────────────────────────
 

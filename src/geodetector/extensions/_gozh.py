@@ -294,3 +294,13 @@ class GOZH:
                 f"p = {row['p_value']:.4f}{sig}"
             )
         return "\n".join(lines)
+
+    def plot(self, **kwargs):
+        from ..plotting import plot_factor
+        return plot_factor(self.q_values_, **kwargs)
+
+    def plot_interaction(self, style="heatmap", **kwargs):
+        from ..plotting import plot_interaction
+        return plot_interaction(self.interaction_q_, self.interaction_type_,
+                                style=style, **kwargs)
+

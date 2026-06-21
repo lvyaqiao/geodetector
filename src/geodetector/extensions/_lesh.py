@@ -92,6 +92,10 @@ def shapley_decompose(data, factors, target, *,
         )
 
     # Compute Shapley values (same for both methods)
+    # NOTE: the loop includes S = ∅ (r = 0), unlike gdverse's spd_lesh
+    # which calls generate_subsets(..., empty=FALSE).  Excluding the empty
+    # set omits the v({j}) – v(∅) term and is a mathematical error in
+    # the R reference implementation.
     indices = list(range(M))
     factorial_vals = [math.factorial(k) for k in range(M + 1)]
 
@@ -333,6 +337,10 @@ class LESH:
                 f"({row['shapley_pct'] * 100:.1f}%)"
             )
         return "\n".join(lines)
+
+    def plot(self, **kwargs):
+        from ..plotting import plot_lesh
+        return plot_lesh(self, **kwargs)
 
 
 def _prepare_col(x_col, discretize_method="quantile", n_strata=5):

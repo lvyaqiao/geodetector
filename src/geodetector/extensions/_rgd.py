@@ -20,8 +20,13 @@ from ..geodetector import GeoDetector
 from .._stats import q_statistic
 
 
-def robust_discretize(x, k, *, minsize=1, random_state=42):
+def robust_discretize(x, k, *, y=None, minsize=1, random_state=42):
     """Discretize using variance-based change point detection.
+
+    Matches the gdverse RGD approach: sorts data by X, then uses the Y
+    values (sorted in X order) as the change-point detection signal.
+    This finds locations along the X gradient where Y changes abruptly,
+    creating strata that maximise Y contrast between zones.
 
     Parameters
     ----------
@@ -29,6 +34,10 @@ def robust_discretize(x, k, *, minsize=1, random_state=42):
         Continuous variable.
     k : int
         Target number of strata.
+    y : array-like of shape (n_samples,), optional
+        Response variable. Required for the gdverse-compatible path
+        (uses Y sorted by X as change-point signal). When None,
+        falls back to X-only quantile-based discretization.
     minsize : int, default=1
         Minimum number of observations per stratum.
     random_state : int, default=42
@@ -40,6 +49,11 @@ def robust_discretize(x, k, *, minsize=1, random_state=42):
     """
     x = np.asarray(x, dtype=float).ravel()
     valid = ~np.isnan(x)
+    if y is not None:
+        y_arr = np.asarray(y, dtype=float).ravel()
+        valid = valid & ~np.isnan(y_arr)
+        y_clean = y_arr[valid]
+
     x_clean = x[valid]
     n = len(x_clean)
     n_unique = len(np.unique(x_clean))
@@ -50,35 +64,39 @@ def robust_discretize(x, k, *, minsize=1, random_state=42):
         return lbl
 
     n_k = min(k, n_unique)
+    sort_idx = np.argsort(x_clean)
 
+    has_y = y is not None
     try:
         import ruptures as rpt
         _HAS_RUPTURES = True
     except ImportError:
         _HAS_RUPTURES = False
 
-    if _HAS_RUPTURES:
-        # Use ruptures for change point detection
-        sort_idx = np.argsort(x_clean)
+    if _HAS_RUPTURES and has_y:
+        # gdverse‑compatible: sort Y by X, detect change points in Y
+        y_sorted = y_clean[sort_idx]
+        algo = rpt.Dynp(model="l2", min_size=max(2, minsize))
+        try:
+            bkps = algo.fit(y_sorted).predict(n_bkps=n_k - 1)
+        except Exception:
+            _HAS_RUPTURES = False
+    elif _HAS_RUPTURES:
+        # Fallback when Y is not available — detect change points in X itself
         x_sorted = x_clean[sort_idx]
-
-        # Normalise for better detection
         signal = (x_sorted - x_sorted.mean()) / (x_sorted.std() + 1e-10)
-        algo = rpt.Dynp(model="l2", min_size=max(2, minsize * n // n_k))
+        algo = rpt.Dynp(model="l2", min_size=max(2, minsize))
         try:
             bkps = algo.fit(signal).predict(n_bkps=n_k - 1)
         except Exception:
             _HAS_RUPTURES = False
 
     if not _HAS_RUPTURES:
-        # Fallback: quantile-based with variance refinement
-        sort_idx = np.argsort(x_clean)
+        # Fallback: quantile-based with variance refinement (on X)
         x_sorted = x_clean[sort_idx]
-        # Initial quantile breaks
         q_breaks = np.percentile(x_sorted, np.linspace(0, 100, n_k + 1))[1:-1]
-        # Refine: move each break to minimise within-group variance
         refined = list(q_breaks)
-        for _ in range(3):  # max 3 iterations
+        for _ in range(3):
             for i in range(len(refined)):
                 b = refined[i]
                 delta = max(abs(b) * 0.1, 0.01)
@@ -106,16 +124,28 @@ def robust_discretize(x, k, *, minsize=1, random_state=42):
                 refined[i] = best_b
         bkps = refined
 
-    # Build break points
-    break_points = sorted(bkps) if isinstance(bkps, (list, np.ndarray)) else []
-
-    # Assign labels
+    # Assign labels. When Y was used, bkps are *indices* into the sorted
+    # array.  When X was used, bkps are actual X-value breakpoints.
     labels = np.full(len(x), -1, dtype=int)
-    if len(break_points) > 0:
-        bins = np.array([-np.inf] + list(break_points) + [np.inf])
-        labels[valid] = np.digitize(x_clean, bins[1:-1], right=True)
+
+    if has_y and _HAS_RUPTURES:
+        # bkps are segment endpoint indices (e.g. [8, 15, 20])
+        # Assign each valid point the label of the segment it falls into
+        if len(bkps) > 0:
+            sort_pos = np.empty(len(x_clean), dtype=int)
+            sort_pos[sort_idx] = np.arange(len(x_clean))
+            labels_sorted = np.searchsorted(bkps[:-1], sort_pos, side="right")
+            labels[valid] = labels_sorted
+        else:
+            labels[valid] = 0
     else:
-        labels[valid] = 0
+        # bkps are X-value breakpoints
+        break_points = sorted(bkps) if isinstance(bkps, (list, np.ndarray)) else []
+        if len(break_points) > 0:
+            bins = np.array([-np.inf] + list(break_points) + [np.inf])
+            labels[valid] = np.digitize(x_clean, bins[1:-1], right=True)
+        else:
+            labels[valid] = 0
 
     return labels.astype(int)
 
@@ -203,6 +233,7 @@ class RGD:
                 if f in continuous_factors:
                     x_d = robust_discretize(
                         data[f], self.k,
+                        y=y,
                         random_state=self.random_state,
                     )
                     discretized[f] = x_d
@@ -227,6 +258,7 @@ class RGD:
                 if f in continuous_factors:
                     x_d = robust_discretize(
                         data[f], dk,
+                        y=y,
                         random_state=self.random_state,
                     )
                     discretized[f] = x_d
@@ -276,6 +308,7 @@ class RGD:
             if f in continuous_factors:
                 x_d = robust_discretize(
                     data[f], opt_k,
+                    y=y,
                     random_state=self.random_state,
                 )
                 final_disc[f] = x_d
@@ -337,6 +370,15 @@ class RGD:
                 f"p = {row['p_value']:.4f}{sig}"
             )
         return "\n".join(lines)
+
+    def plot(self, **kwargs):
+        from ..plotting import plot_factor
+        return plot_factor(self.q_values_, **kwargs)
+
+    def plot_interaction(self, style="heatmap", **kwargs):
+        from ..plotting import plot_interaction
+        return plot_interaction(self.interaction_q_, self.interaction_type_,
+                                style=style, **kwargs)
 
 
 def _loess_smooth(x, y, frac=0.6):
