@@ -500,9 +500,9 @@ class EcologicalDetector(BaseEstimator):
                 if abs(denom) < 1e-12 and abs(numer) < 1e-12:
                     f_stat, p_val = 1.0, 1.0
                 elif abs(denom) < 1e-12:
-                    f_stat, p_val = 0.0, 0.0
-                elif abs(numer) < 1e-12:
                     f_stat, p_val = float("inf"), 0.0
+                elif abs(numer) < 1e-12:
+                    f_stat, p_val = 0.0, 0.0
                 else:
                     f_stat = numer / denom
                     # Two-tailed F-test with df1 = df2 = N-1

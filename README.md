@@ -171,14 +171,17 @@ This package is aligned with two R reference implementations:
 
 | Feature | GD-main (`GD`) | gdverse | This package |
 |---------|---------------|---------|--------------|
-| Factor detector q | ✓ same formula | ✓ same formula | ✓ matches both |
-| Non-central F λ | ✓ | ✓ | ✓ matches both |
+| Factor detector q | ✓ same formula | ✓ same formula | ✓ same formula |
+| F-test degrees of freedom | uses original N, L | uses filtered N, L | uses filtered N, L (matches gdverse) |
+| Non-central F λ | ✓ same formula | ✓ same formula | ✓ same formula |
 | Interaction q12 | per-pair `gd()` | per-pair `gd()` | per-pair consistent subset |
 | Ecological F | `q₂/q₁` (α≈0.2) | `(1−q₁)/(1−q₂)` 1-tailed | `(1−q₁)/(1−q₂)` 2-tailed |
 | OPGD defaults | user-specified | 5 methods | 5 methods (matches gdverse) |
 | GOZH interaction | — | joint tree per pair | joint tree per pair |
 | LESH discretization | — | `rpart_disc` (GOZH) | supports both |
 | RGD discnum search | — | 3:8 + LOESS | 3:8 + LOESS |
+
+**Degrees of freedom note**: When single-observation strata exist, GD-main computes the F-test degrees of freedom using the original (unfiltered) N and L, while gdverse recomputes N and L after filtering. This package follows gdverse's approach. The difference is negligible when all strata have ≥2 observations.
 
 **Ecological detector note**: This package uses a two-tailed F-test with `F = (1−q₁)/(1−q₂)`. GD-main uses `F = q₂/q₁` with `qf(0.9, n−1, n−1)`. gdverse uses one-tailed `pf(F, n−1, n−1, lower.tail=FALSE)`. The two-tailed test is more conservative and symmetric (order-independent).
 
@@ -356,14 +359,17 @@ print(rgd.all_q_values_)  # 所有分层数下的 q 值
 
 | 功能 | GD-main (`GD`) | gdverse | 本工具包 |
 |------|---------------|---------|----------|
-| 因子探测器 q | ✓ 相同公式 | ✓ 相同公式 | ✓ 匹配两者 |
-| 非中心 F λ | ✓ | ✓ | ✓ 匹配两者 |
+| 因子探测器 q | ✓ 相同公式 | ✓ 相同公式 | ✓ 相同公式 |
+| F 检验自由度 | 使用原始 N、L | 使用过滤后 N、L | 使用过滤后 N、L (匹配 gdverse) |
+| 非中心 F λ | ✓ 相同公式 | ✓ 相同公式 | ✓ 相同公式 |
 | 交互 q12 | 每对调用 `gd()` | 每对调用 `gd()` | 每对使用一致子集 |
 | 生态检测器 F | `q₂/q₁` (α≈0.2) | `(1−q₁)/(1−q₂)` 单侧 | `(1−q₁)/(1−q₂)` 双侧 |
 | OPGD 默认方法 | 用户指定 | 5 种方法 | 5 种方法 (匹配 gdverse) |
 | GOZH 交互 | — | 每对联合决策树 | 每对联合决策树 |
 | LESH 离散化 | — | `rpart_disc` (GOZH) | 支持两种方式 |
 | RGD 分层数搜索 | — | 3:8 + LOESS | 3:8 + LOESS |
+
+**自由度说明**：当存在单观测分层时，GD-main 使用原始（未过滤）的 N 和 L 计算 F 检验自由度，而 gdverse 在移除单观测分层后重新计算 N 和 L。本工具包遵循 gdverse 的方式。当所有分层均含 ≥2 个观测值时差异可忽略。
 
 **生态检测器说明**：本工具包使用双侧 F 检验，`F = (1−q₁)/(1−q₂)`。GD-main 使用 `F = q₂/q₁` 配合 `qf(0.9, n−1, n−1)` 临界值。gdverse 使用单侧检验 `pf(F, n−1, n−1, lower.tail=FALSE)`。双侧检验更保守且对称（与因子顺序无关）。
 

@@ -339,6 +339,61 @@ class RGD:
         return "\n".join(lines)
 
 
+def _loess_smooth(x, y, frac=0.6):
+    """LOESS (locally estimated scatterplot smoothing) via local linear regression.
+
+    Parameters
+    ----------
+    x : ndarray, sorted
+        Independent variable.
+    y : ndarray
+        Response variable.
+    frac : float
+        Fraction of data used in each local fit (0 < frac <= 1).
+
+    Returns
+    -------
+    ndarray
+        Smoothed y values, same shape as x.
+    """
+    n = len(x)
+    if n < 3:
+        return y.copy()
+
+    r = int(np.ceil(frac * n))
+    y_smooth = np.empty(n)
+
+    for i in range(n):
+        # Find the r nearest neighbours in x
+        dist = np.abs(x - x[i])
+        idx = np.argpartition(dist, min(r, n - 1))[:r]
+        d_max = dist[idx].max()
+        if d_max == 0:
+            y_smooth[i] = y[i]
+            continue
+
+        # Tricube weights
+        u = dist[idx] / d_max
+        w = np.where(u < 1, (1 - u ** 3) ** 3, 0)
+
+        if np.sum(w) < 1e-10:
+            y_smooth[i] = y[i]
+            continue
+
+        # Weighted linear regression
+        X = np.column_stack([np.ones(r), x[idx]])
+        W_sqrt = np.sqrt(w)
+        Xw = X * W_sqrt[:, None]
+        yw = y[idx] * W_sqrt
+        try:
+            beta, _, _, _ = np.linalg.lstsq(Xw, yw, rcond=None)
+            y_smooth[i] = beta[0] + beta[1] * x[i]
+        except np.linalg.LinAlgError:
+            y_smooth[i] = y[i]
+
+    return y_smooth
+
+
 def _select_optimal_discnum(discnums, q_values, strategy, increase_rate):
     """Select optimal discnum per factor.
 
@@ -366,11 +421,10 @@ def _select_optimal_discnum(discnums, q_values, strategy, increase_rate):
 
     # Sort by discnum
     order = np.argsort(d)
-    d_sorted = d[order]
-    q_sorted = q[order]
+    d_sorted = d[order].astype(float)
+    q_sorted = q[order].astype(float)
 
     if strategy == 1:
-        # Pick discnum with max q-value
         return int(d_sorted[np.argmax(q_sorted)])
 
     # Strategy 2: LOESS elbow detection
@@ -381,10 +435,14 @@ def _select_optimal_discnum(discnums, q_values, strategy, increase_rate):
     if q_range <= 0:
         return int(d_sorted[-1])
 
-    # Find elbow: first point where normalized increase < increase_rate
+    # Smooth q-values using LOESS
+    q_smooth = _loess_smooth(d_sorted, q_sorted)
+
+    # Find elbow on smoothed curve: first point where incremental gain
+    # (normalized by total range) falls below the increase_rate threshold
     for i in range(1, len(d_sorted)):
-        norm_increase = (q_sorted[i] - q_sorted[i - 1]) / q_range
-        if norm_increase < increase_rate:
+        delta = q_smooth[i] - q_smooth[i - 1]
+        if delta > 0 and delta / q_range < increase_rate:
             return int(d_sorted[i - 1])
 
     return int(d_sorted[-1])
