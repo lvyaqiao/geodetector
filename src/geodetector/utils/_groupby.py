@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 
 
-def groupby(X: npt.NDArray[np.int_], y: npt.NDArray[np.float_]):
+def groupby(X: npt.NDArray[np.int64], y: npt.NDArray[np.float64]):
     """group y by x
 
     Parameters

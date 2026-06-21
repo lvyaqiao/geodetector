@@ -64,7 +64,7 @@ def plot_factor(q_values, *, ax=None, sig_level=0.05,
     ax.set_yticks(range(len(df)))
     ax.set_yticklabels(df["variable"])
     ax.set_xlabel("q-value")
-    ax.set_xlim(0, min(1.05, df["q_value"].max() * 1.3 + 0.05))
+    ax.set_xlim(0, min(1.05, np.nanmax(df["q_value"]) * 1.3 + 0.05))
 
     # Annotate q-values and significance stars
     for i, (_, row) in enumerate(df.iterrows()):
@@ -78,10 +78,6 @@ def plot_factor(q_values, *, ax=None, sig_level=0.05,
         ax.text(row["q_value"] + 0.01, i,
                 f'{row["q_value"]:.3f}{sig}',
                 va="center", fontsize=9)
-
-    # Significance threshold line
-    ax.axvline(x=sig_level, color="red", linestyle="--",
-               linewidth=0.6, alpha=0.3)
 
     # Legend
     from matplotlib.patches import Patch
@@ -141,7 +137,7 @@ def plot_interaction(interaction_q, interaction_type=None, *,
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize or (n * 1.3, n * 1.3))
 
-        q_max = max(interaction_q.values.max(), 0.01)
+        q_max = max(np.nanmax(interaction_q.values), 0.01)
         for i, f1 in enumerate(factors):
             for j, f2 in enumerate(factors):
                 qv = interaction_q.loc[f1, f2]

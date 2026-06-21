@@ -75,7 +75,7 @@ class GeoDetectorRegressor(RegressorMixin, BaseEstimator):
 
         # assert dtype of x is int
         try:
-            X = X.astype(np.int_)
+            X = X.astype(np.int64)
         except ValueError:
             raise ValueError("dtype of X must be int when method is None.")
 
@@ -106,7 +106,7 @@ class GeoDetectorRegressor(RegressorMixin, BaseEstimator):
         if self.method is not None:
             X = self._cluster(X, self.method)
         else:
-            X = X.astype(np.int_)
+            X = X.astype(np.int64)
 
         y = np.array([self.judge_dic[tuple(x)] for x in X])
         return y
